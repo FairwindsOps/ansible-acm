@@ -1,0 +1,39 @@
+---
+
+- name: run aws acm list-certificates
+  shell: aws acm list-certificates
+  register: output
+
+- fail: msg="acm_domain_name is undefined"
+  when: acm_domain_name is undefined
+- fail: msg="acm_validation_domain is undefined"
+  when: acm_validation_domain is undefined
+
+# - debug: var=certificate_list.stdout
+- set_fact:
+    output_json: "{{output.stdout|from_json}}"
+# - debug: msg="{{output_json}}"
+- set_fact:
+    certificate_list: "{{output_json.CertificateSummaryList|to_json}}"
+# - debug: msg="{{certificate_list}}"
+
+- name: explicitly initialize domain_in_certificate_list
+  set_fact:
+    domain_in_certificate_list: False
+
+- name: iterate through the certificate list
+  set_fact:
+    domain_in_certificate_list: True
+  when: item.DomainName == acm_domain_name
+  with_items: "{{certificate_list}}"
+
+# - debug: msg="domain not in certificate list"
+#   when: not domain_in_certificate_list
+
+# - debug: msg="domain in certificate list"
+#   when: domain_in_certificate_list
+
+# Note: an ACM certificate that is in Status:pending will be included in the list of certificates outputted by 'aws acm request-certificate'
+- name: send ACM request if needed
+  shell: aws acm request-certificate --domain-name "{{ acm_domain_name }}"  --domain-validation-options DomainName="{{ acm_domain_name }}",ValidationDomain="{{ acm_validation_domain }}"
+  when: not domain_in_certificate_list
