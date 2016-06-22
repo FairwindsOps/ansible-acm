@@ -1,0 +1,3 @@
+---
+acm_domain_name: subdomain.example.com
+acm_validation_domain: example.com
